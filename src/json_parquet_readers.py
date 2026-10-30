@@ -27,3 +27,12 @@ def read_country_json(file_path: Union[str, Path], manifest: Dict[str, Any]) -> 
         raise ValueError("Expected a top-level JSON list or nested list of record objects.")
 
     return pd.DataFrame.from_records(records)
+
+
+def read_country_parquet(file_path: Union[str, Path], manifest: Dict[str, Any]) -> pd.DataFrame:
+    """Read country records from a Parquet file."""
+    path = Path(file_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Parquet file not found: {path}")
+
+    return pd.read_parquet(path, engine="pyarrow")
