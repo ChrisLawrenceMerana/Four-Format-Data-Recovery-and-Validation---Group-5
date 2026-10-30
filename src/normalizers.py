@@ -27,3 +27,36 @@ def apply_column_mapping(df: pd.DataFrame, manifest: Dict[str, Any]) -> pd.DataF
     return df
 
 
+def normalize_and_validate(df: pd.DataFrame) -> pd.DataFrame:
+    """Enforce data types, uniqueness, and domain bounds."""
+    result = df.loc[:, list(SCHEMA)].copy()
+    
+    if result.isna().any().any():
+        raise ValueError("This dataset must not contain missing fields.")
+    
+    for column in ("year", "pop"):
+        numeric = pd.to_numeric(result[column], errors="raise")
+        if not np.isfinite(numeric.to_numpy(dtype=float)).all() or not (numeric % 1 == 0).all():
+            raise ValueError(f"{column} must contain finite whole numbers.")
+            
+    try:
+        result = result.astype(SCHEMA)
+    except (ValueError, TypeError) as error:
+        raise ValueError(f"Cannot apply the expected schema: {error}") from error
+        
+    if result.duplicated(["country", "year"]).any():
+        raise ValueError("Duplicate country-year key.")
+        
+    if not (result["pop"] > 0).all():
+        raise ValueError("Population must be positive.")
+        
+    if not (np.isfinite(result["lifeExp"]) & result["lifeExp"].between(0, 120)).all():
+        raise ValueError("Life expectancy must be finite and between 0 and 120.")
+        
+    if not (np.isfinite(result["gdpPercap"]) & result["gdpPercap"].gt(0)).all():
+        raise ValueError("GDP per capita must be finite and positive.")
+        
+    if result.empty:
+        raise ValueError("No records were loaded.")
+        
+    return result
