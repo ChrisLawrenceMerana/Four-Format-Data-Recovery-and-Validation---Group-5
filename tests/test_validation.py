@@ -32,3 +32,17 @@ class ValidationTests(unittest.TestCase):
         _, run = validate_and_dedupe(df, "f.csv", RULES)
         self.assertEqual((run.raw_rows, len(run.quarantined), len(run.duplicates)), (3, 1, 1))
         self.assertTrue(run.reconciles())
+
+def test_bad_rows_are_quarantined(self):
+        bad = [{"lifeExp": "abc"}, {"year": "1997.5"}, {"pop": "100.25"}, {"lifeExp": "nan"},
+               {"gdpPercap": "inf"}, {"lifeExp": "999"}, {"year": "1900"},
+               {"country": "  "}, {"pop": ""}]
+        for override in bad:
+            with self.subTest(override=override):
+                table, run = validate_and_dedupe(make_df(override), "f.csv", RULES)
+                self.assertEqual((len(table), len(run.quarantined)), (0, 1))
+
+    def test_quarantine_keeps_raw_value(self):
+        _, run = validate_and_dedupe(make_df({"lifeExp": "abc"}), "f.csv", RULES)
+        self.assertEqual(run.quarantined[0]["lifeExp"], "abc")
+        self.assertEqual(run.quarantined[0]["source_record"], 1)        
