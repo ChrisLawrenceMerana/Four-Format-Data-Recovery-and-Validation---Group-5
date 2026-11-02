@@ -30,3 +30,29 @@ class ValidationRun:
         """Return True if raw = rejected + duplicate copies + canonical rows."""
         kept = len(self.quarantined) + len(self.duplicates) + len(self.clean_rows)
         return kept == self.raw_rows
+
+def check_value(column: str, value: Any, rules: dict[str, Any]) -> Any:
+    """Return the cleaned value, or raise ValueError('column: reason')."""
+    text = "" if value is None or pd.isna(value) else str(value).strip()
+    if text == "":
+        raise ValueError(f"{column}: missing value")
+    if column in TEXT:
+        if column == "continent" and text not in rules["allowed_continents"]:
+            raise ValueError(f"{column}: not allowed")
+        return text
+    try:
+        number = float(text)
+    except ValueError:
+        raise ValueError(f"{column}: invalid number") from None
+    if not math.isfinite(number):
+        raise ValueError(f"{column}: non-finite number")
+    if column in WHOLE:
+        if not number.is_integer():
+            raise ValueError(f"{column}: fractional value")
+        number = int(number)
+    if column == "year" and number not in rules["allowed_years"]:
+        raise ValueError(f"{column}: not an allowed year")
+    low, high = rules.get("ranges", {}).get(column, (-math.inf, math.inf))
+    if not low <= number <= high:
+        raise ValueError(f"{column}: out of range")
+    return number
