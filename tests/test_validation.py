@@ -45,4 +45,21 @@ def test_bad_rows_are_quarantined(self):
     def test_quarantine_keeps_raw_value(self):
         _, run = validate_and_dedupe(make_df({"lifeExp": "abc"}), "f.csv", RULES)
         self.assertEqual(run.quarantined[0]["lifeExp"], "abc")
-        self.assertEqual(run.quarantined[0]["source_record"], 1)        
+        self.assertEqual(run.quarantined[0]["source_record"], 1)       
+
+def test_exact_duplicate_is_logged(self):
+        table, run = validate_and_dedupe(make_df({}, {}), "f.csv", RULES)
+        self.assertEqual((len(table), len(run.duplicates)), (1, 1))
+        self.assertEqual(run.duplicates[0]["source_record"], 2)
+
+    def test_conflicting_key_stops(self):
+        with self.assertRaises(ConflictingKeyError):
+            validate_and_dedupe(make_df({}, {"pop": "1"}), "f.csv", RULES)
+
+    def test_invalid_row_is_not_a_conflict(self):
+        table, run = validate_and_dedupe(make_df({}, {"lifeExp": "abc"}), "f.csv", RULES)
+        self.assertEqual((len(table), len(run.quarantined)), (1, 1))
+
+
+if __name__ == "__main__":
+    unittest.main() 
