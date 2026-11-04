@@ -221,3 +221,14 @@ __marimo__/
 
 # Dataset files
 data/
+
+# Generated pipeline outputs
+output/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temporary staging and backup folders
+.recovery-stage-*/
+output.backup/
