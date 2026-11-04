@@ -1,9 +1,10 @@
 """Module for pandas analysis"""
 
+import numpy as np
 import pandas as pd
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
-def generate_asia_selected_year(df: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
+def asia_selected_year(df: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
     """Selects Asia and configured year, adds population in millions and descending life-expectancy rank. Afterwards, sorts by rank and country."""
 
 
@@ -25,7 +26,27 @@ def generate_asia_selected_year(df: pd.DataFrame, config: dict[str, Any]) -> pd.
 
     return asia_df
 
-def calculate_asia_pop(asia_df: pd.DataFrame) -> int:
+def asia_pop(asia_df: pd.DataFrame) -> int:
     """Computes the asian population of a selected year"""
 
     return int(asia_df["pop"].sum())
+
+def country_history(df: pd.DataFrame) -> pd.DataFrame:
+    """Searches for Philippine observations according to year"""
+
+    #Philippine and year filter
+    ph_mask = df["country"] == "Philippines"
+    ph_df = df.loc[ph_mask].sort_values(by="year").copy().reset_index(drop=True)
+
+    if ph_df.empty:
+        raise ValueError("No observations found")
+
+    #Million population add
+    ph_df["pop_millions"] = ph_df["pop  "] / 1000000
+
+    #Life-expectancy
+    first_life_exp = ph_df.loc[0, "lifeExp"]
+    ph_df["lifeExp_change"] = ph_df["lifeExp"] - first_life_exp
+
+    return ph_df
+
