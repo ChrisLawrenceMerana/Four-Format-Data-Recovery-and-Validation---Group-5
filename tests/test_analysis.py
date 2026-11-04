@@ -72,4 +72,23 @@ class AnalysisTest(unittest.TestCase):
         self.assertEqual(history_df.loc[0, "lifeExp_change", 0])
         self.assertAlmostEqual(history_df.loc[1, "lifeExp_change"], 2)
 
-        
+    def test_matrix(self):
+        """Test numpy matrix"""
+
+        matrix_df = population_matrix(self.mock_df)
+
+        self.assertIn("country", matrix_df.columns)
+        self.assertIn("2007", matrix_df.columns)
+        self.assertEqual(len(matrix_df), 3)
+
+    def test_calc_verification(self):
+        """Test verification"""
+
+        test = calc_verification(self.mock_df)
+        self.assertIn("asia_population_matches_benchmark", test)
+        self.assertIn("ph_population_matches_benchmark", test)
+        self.assertIn("calculated_asia_pop", test)
+        self.assertIn("calculated_ph_pop", test)
+
+if __name__ == "__main__":
+    unittest.main()
