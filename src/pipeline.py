@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 
 from src.readers import (
     read_csv_records,
@@ -24,6 +25,7 @@ from src.analysis import (
     asia_pop,
     country_history,
     population_matrix,
+    calc_verification
 )
 
 from src.exporter import (
@@ -394,3 +396,110 @@ def run_pipeline(config: dict) -> None:
     print(
         f"Final canonical records: {len(canonical_df)}"
     )
+
+    print("\nStarting analytical processing...")
+
+    #1. Select Asian countries for the reporting year.
+    asia_df = asia_selected_year(
+        canonical_df,
+        {"reporting_year": reporting_year}
+    )
+
+    print(
+        f"Asia {reporting_year} records: {len(asia_df)}"
+    )
+
+    #2. Calculate the selected-year Asian population.
+    asia_population = asia_pop(asia_df)
+
+    print(
+        f"Asia {reporting_year} population: "
+        f"{asia_population:,}"
+    )
+
+    #3. Generate Philippines historical observations
+    history_df = country_history(canonical_df)
+
+    if len(history_df) != 12:
+        raise ValueError(
+            f"Expected 12 Philippines records, "
+            f"found {len(history_df)}"
+        )
+
+    print(
+        f"Philippines historical records: "
+        f"{len(history_df)}"
+    )
+
+    #4. Generate the population index matrix
+    matrix_df = population_matrix(canonical_df)
+
+    if matrix_df.shape != (3,7):
+        raise ValueError(
+            f"Expected a 3x7 matrix table, "
+            f"found {matrix_df.shape}"
+        )
+
+    expected_countries = [
+        "Philippines",
+        "Indonesia",
+        "Thailand"
+    ]
+
+    expected_columns = [
+        "country",
+        "1982",
+        "1987",
+        "1992",
+        "1997",
+        "2002",
+        "2007"
+    ]
+
+    if list(matrix_df.columns) != expected_columns:
+        raise ValueError(
+            "Population matrix countries do not match"
+        )
+
+    #Every country's 1982 baseline should equal 100.
+    if not np.allclose(
+        matrix_df["1982"].to_numpy(dtype=float),
+        100.0,
+        rtol=0,
+        atol=1e-8
+    ):
+        raise ValueError(
+            "Population index baseline verification failed"
+        )
+
+    print("Population index matrix: PASS")
+
+    #5. Verify the required 2007 population controls.
+    verification = calc_verification(canonical_df)
+
+    if not verification["asia_population_matches_benchmark"]:
+        raise ValueError(
+            "Asia 2007 population benchmark failed"
+        )
+    
+    if not verification["ph_population_matches_benchmark"]:
+        raise ValueError(
+            "Philippines 2007 population benchmark failed"
+        )
+
+    print("Asia 2007 population benchmark: PASS")
+    print("Philippines 2007 population benchmark: PASS")
+
+    #6. Check the selected-year Asia result independently.
+    numpy_asia_population = int(
+        np.sum(asia_df["pop"].to_numpy(dtype=np.int64))
+    )
+
+    if asia_population != numpy_asia_population:
+        raise ValueError(
+            "Pandas and NumPy Asia population totals disagree"
+        )
+
+    print("Pandas and Numpy population agreement: PASS")
+
+    print("\nAnalytical processing: PASS")
