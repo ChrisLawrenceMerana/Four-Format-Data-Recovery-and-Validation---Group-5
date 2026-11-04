@@ -55,3 +55,21 @@ class AnalysisTest(unittest.TestCase):
         #Verifies ranking for a non-asian country
         test_rank = result.loc[result["country"] == "Thailand," "lifeExp_rank"].values[0]
         self.assertEqual(test_rank, 1.0)
+
+    def test_asia_pop_calc(self):
+        """Test pop sum"""
+
+        asia_df = asia_selected_year(self.mock_df, self.config)
+        total_pop = asia_pop(asia_df)
+        desired = 91077287 + 230000000 + 65000000
+        self.assertEqual(total_pop, desired)
+
+    def test_country_history(self):
+        """Test Philippine historical years & life expectancy change calc"""
+
+        history_df = country_history(self.mock_df)
+
+        self.assertEqual(history_df.loc[0, "lifeExp_change", 0])
+        self.assertAlmostEqual(history_df.loc[1, "lifeExp_change"], 2)
+
+        
