@@ -57,3 +57,72 @@ def compare_frames(
             rtol=0,
             atol=1e-8
         )
+
+def export_and_verify(
+    df: pd.DataFrame,
+    output_dir: str | Path
+) -> dict[str, str]:
+    """Export four formats and verify every reload."""
+
+    folder = Path(output_dir)
+    folder.mkdir(parents=True, exist_ok=True)
+
+    canonical = df[COLUMNS].astype(SCHEMA)
+
+    paths = {
+        "csv": folder / "canonical.csv",
+        "xlsx": folder / "canonical.xlsx",
+        "json": folder / "canonical.json",
+        "parquet": folder / "canonical.parquet",
+    }
+
+    # Export canonical dataset.
+    canonical.to_csv(
+        paths["csv"],
+        index=False
+    )
+
+    canonical.to_excel(
+        paths["xlsx"],
+        sheet_name="observations",
+        index=False
+    )
+
+    canonical.to_json(
+        paths["json"],
+        orient="records",
+        double_precision=15
+    )
+
+    canonical.to_parquet(
+        paths["parquet"],
+        index=False,
+        engine="pyarrow"
+    )
+
+    # Reload the exported datasets.
+    reloaded = {
+        "csv": pd.read_csv(paths["csv"]),
+        "xlsx": pd.read_excel(
+            paths["xlsx"],
+            sheet_name="observations"
+        ),
+        "json": pd.read_json(
+            paths["json"],
+            orient="records"
+        ),
+        "parquet": pd.read_parquet(
+            paths["parquet"]
+        ),
+    }
+
+    # Compare all four against the original.
+    for format_name, table in reloaded.items():
+        compare_frames(canonical, table)
+
+        print(f"{format_name.upper()} round trip: PASS")
+
+    return {
+        name: str(path)
+        for name, path in paths.items()
+    }
