@@ -1,4 +1,4 @@
-"""Module for pandas analysis & numpy matrix"""
+"""Module for pandas analysis, numpy matrix & calculation verification"""
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ def asia_selected_year(df: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame
     reporting_year = config.get("reporting_year", 2007)
 
     #.loc filter according to continent and year
-    asia_mask = (df["continent"] == "Asia") & (df["year"]) == reporting_year
+    asia_mask = (df["continent"] == "Asia") & (df["year"] == reporting_year)
     asia_df = df.loc[asia_mask].copy()
 
     #Adds population in millions
@@ -42,7 +42,7 @@ def country_history(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("No observations found")
 
     #Million population add
-    ph_df["pop_millions"] = ph_df["pop  "] / 1000000
+    ph_df["pop_millions"] = ph_df["pop"] / 1000000
 
     #Life-expectancy
     first_life_exp = ph_df.loc[0, "lifeExp"]
@@ -76,7 +76,7 @@ def population_matrix(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     #Loop check
     indexed_loop = np.empty_like(pop_matrix)
     for i in range(pop_matrix.shape[0]):
-        base= pop_matrix[1, 0]
+        base= pop_matrix[i, 0]
         for j in range(pop_matrix.shape[1]):
             indexed_loop[i, j] = (pop_matrix[i, j] / base) *100
 
