@@ -31,7 +31,6 @@ from src.exporter import (
     compare_frames,
 )
 
-
 CANONICAL_COLUMNS = [
     "country",
     "continent",
@@ -41,6 +40,22 @@ CANONICAL_COLUMNS = [
     "gdpPercap",
 ]
 
+def build_rules(manifest:dict) -> dict:
+    """Create validation rules using the manifest"""
+
+    return {
+        "allowed_years": set(
+            manifest["allowed_years"]
+        ),
+        "allowed_continents": set(
+            manifest["allowed_continents"]
+        ),
+        "ranges": {
+            "lifeExp": (0.0, 120.0),
+            "pop": (1, float("inf")),
+            "gdpPercap": (0.0, float("inf")),
+        },
+    }
 
 def verify_hash(
     file_path: Path,
@@ -56,7 +71,6 @@ def verify_hash(
         raise ValueError(
             f"SHA-256 mismatch: {file_path.name}"
         )
-
 
 def read_source(
     file_path: Path,
@@ -169,8 +183,15 @@ def run_pipeline(config: dict) -> None:
     print("Reporting year:", reporting_year)
     print()
 
-    # Store the four raw DataFrames.
-    raw_tables = []
+    # Prepare validation rules.
+    rules = build_rules(manifest)
+
+    # Store the four cleaned DataFrames.
+    canonical_tables = []
+
+    # Store invalid and duplicate records.
+    all_quarantined = []
+    all_duplicates = []
 
     for settings in manifest["files"]:
 
@@ -208,7 +229,99 @@ def run_pipeline(config: dict) -> None:
         print("Column mapping: PASS")
         print()
 
-        raw_tables.append(raw_df)
+        
+        # Validate and remove exact duplicates.
+        clean_df, validation_run = validate_and_dedupe(
+            raw_df,
+            file_path.name,
+            rules
+        )
 
-    print("All four formats loaded successfully!")
-    print(f"Datasets loaded: {len(raw_tables)}")
+        # Count the results.
+        rejected_count = len(
+            validation_run.quarantined
+        )
+
+        duplicate_count = len(
+            validation_run.duplicates
+        )
+
+        clean_count = len(clean_df)
+
+        # Expected values from the manifest.
+        expected = manifest["expected_per_file"]
+
+        if rejected_count != expected["rejected_rows"]:
+            raise ValueError(
+                f"{file_path.name}: expected "
+                f"{expected['rejected_rows']} rejected rows, "
+                f"found {rejected_count}"
+            )
+
+        if duplicate_count != expected["exact_duplicates_removed"]:
+            raise ValueError(
+                f"{file_path.name}: expected "
+                f"{expected['exact_duplicates_removed']} duplicates, "
+                f"found {duplicate_count}"
+            )
+
+        if clean_count != expected["canonical_rows"]:
+            raise ValueError(
+                f"{file_path.name}: expected "
+                f"{expected['canonical_rows']} clean rows, "
+                f"found {clean_count}"
+            )
+
+        if (
+            len(raw_df) - rejected_count
+            != expected["valid_before_deduplication"]
+        ):
+            raise ValueError(
+                f"{file_path.name}: valid row count mismatch"
+            )
+
+        if not validation_run.reconciles():
+            raise ValueError(
+                f"{file_path.name}: reconciliation failed"
+            )
+
+        print(f"Quarantined: {rejected_count}")
+        print(f"Duplicates removed: {duplicate_count}")
+        print(f"Clean records: {clean_count}")
+        print("Validation: PASS")
+        print()
+
+        # Save cleaned data and validation details.
+        canonical_tables.append(clean_df)
+
+        all_quarantined.extend(
+            validation_run.quarantined
+        )
+
+        all_duplicates.extend(
+            validation_run.duplicates
+        )
+
+    
+    print("All four formats validated successfully!")
+    print(f"Datasets validated: {len(canonical_tables)}")
+
+    print(
+        f"Total quarantined: {len(all_quarantined)}"
+    )
+
+    print(
+        f"Total duplicates removed: {len(all_duplicates)}"
+    )
+
+    if len(all_quarantined) != 24:
+        raise ValueError(
+            "Expected 24 quarantined records overall"
+        )
+
+    if len(all_duplicates) != 8:
+        raise ValueError(
+            "Expected 8 exact duplicates overall"
+        )
+
+    print("All validation counts: PASS")
