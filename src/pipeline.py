@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+import shutil
+import tempfile
 
 from src.readers import (
     read_csv_records,
@@ -162,6 +164,45 @@ def read_source(
         CANONICAL_COLUMNS
         + ["source_record", "source_file"]
     ]
+
+def publish_staging(
+    staging_dir: Path, 
+    output_dir: Path
+) -> None:
+    """Publish verified results, restoring previous files on error."""
+
+    staging_dir = staging_dir.resolve()
+    output_dir = output_dir.resolve()
+
+    output_dir.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    backup_dir = output_dir.with_name(
+        output_dir.name + ".backup"
+    )
+
+    if backup_dir.exists():
+        raise RuntimeError(
+            f"Backup already exists: {backup_dir}"
+        )
+
+    previous_output_exists = output_dir.exists()
+
+    if previous_output_exists:
+        output_dir.rename(backup_dir)
+
+    try:
+        staging_dir.rename(output_dir)
+
+    except Exception:
+        if previous_output_exists and backup_dir.exists():
+            backup_dir.rename(output_dir)
+        raise
+
+    if previous_output_exists:
+        shutil.rmtree(backup_dir)
 
 def run_pipeline(config: dict) -> None:
     """Load and verify the four input datasets."""
@@ -503,3 +544,84 @@ def run_pipeline(config: dict) -> None:
     print("Pandas and Numpy population agreement: PASS")
 
     print("\nAnalytical processing: PASS")
+
+    print("\nStarting safe output staging...")
+
+    #Make sure the output's parent folder exists.
+    output_dir = output_dir.resolve()
+
+    output_dir.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    #Create a temporary folder beside output.
+
+    staging_dir = Path(
+        tempfile.mkdtemp(
+            prefix=".recovery-stage-",
+            dir=output_dir.parent
+        )
+    )
+
+    try:
+        print("Writing files to staging directory...")
+
+        #Save the three analytical reports.
+        asia_df.to_csv(
+            staging_dir / "asia_selected_year.csv",
+            index=False
+        )
+
+        history_df.to_csv(
+            staging_dir / "country_history.csv",
+            index=False
+        )
+
+        matrix_df.to_csv(
+            staging_dir / "population_index.csv",
+            index=False
+        )
+
+        print("Analytical reports: STAGED")
+
+        #Export all four canonical formats, reloads and compares every export/
+        export_paths = export_and_verify(
+            canonical_df,
+            staging_dir
+        )
+
+        for format_name in (
+            "csv",
+            "xlsx",
+            "json",
+            "parquet"
+        ):
+            if format_name not in export_paths:
+                raise ValueError(
+                    f"Missing export: {format_name}"
+                )
+            print(
+                f"Canonical {format_name.upper()}: VERIFIED"
+            )
+
+        #Publish only after all checks succeed.
+        publish_staging(
+            staging_dir,
+            output_dir
+        )
+
+        print("Staged files published successfully!")
+
+    except Exception:
+        #Remove incomplete temporary files.
+        if staging_dir.exists():
+            shutil.rmtree(staging_dir)
+
+        print(
+            "Staging failed. Previous outputs were preserved."
+        )
+
+        raise
+
+    print("\nSafe Staging and Publication: PASS")
