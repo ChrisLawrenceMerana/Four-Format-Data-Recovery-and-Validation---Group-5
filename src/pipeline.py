@@ -1,14 +1,17 @@
+
 import json
 from pathlib import Path
 
 import pandas as pd
 
-from src.readers import(
+import hashlib
+
+from src.readers import (
     read_csv_records,
     read_excel_records
 )
 
-from src.json_parquet_reader import(
+from src.json_parquet_reader import (
     read_country_json,
     read_country_parquet
 )
@@ -22,10 +25,11 @@ from src.analysis import (
     population_matrix
 )
 
-from src.exporter import(
+from src.exporter import (
     export_and_verify,
     compare_frames
 )
+
 
 def run_pipeline(config: dict) -> None:
     """Run the four-format recovery and validation pipeline."""
@@ -41,3 +45,29 @@ def run_pipeline(config: dict) -> None:
     print("Data directory:", data_dir)
     print("Output directory:", output_dir)
     print("Reporting year:", reporting_year)
+
+    if format_name == "csv":
+        raw_df = read_csv_records(data_dir / manifest["csv"])
+    elif format_name == "xlsx":
+        raw_df = read_excel_records(data_dir / manifest["xlsx"])
+    elif format_name == "json":
+        raw_df = read_country_json(data_dir / manifest["json"])
+    elif format_name == "parquet":
+        raw_df = read_country_parquet(data_dir / manifest["parquet"])
+    else:
+        raise ValueError(f"Unsupported format")
+
+def verify_hash(
+    file_path: Path,
+    expected_hash: str
+) -> None:
+    """Verify an input file's SHA-256 digest."""
+
+    actual_hash = hashlib.sha256(
+        file_path.read_bytes()
+    ).hexdigest()
+
+    if actual_hash != expected_hash:
+        raise ValueError(
+            f"SHA-256 mismatch: {file_path.name}"
+        )
