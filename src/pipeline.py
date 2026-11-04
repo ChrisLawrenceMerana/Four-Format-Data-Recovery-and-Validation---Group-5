@@ -325,3 +325,72 @@ def run_pipeline(config: dict) -> None:
         )
 
     print("All validation counts: PASS")
+
+    print ("\nStarting for-format comparison...")
+
+    if len(canonical_tables) != 4:
+        raise ValueError(
+            f"Expected 4 cleaned datasets, "
+            f"found {len(canonical_tables)}"
+        )
+
+    #Use CSV as the referene dataset.
+    reference = canonical_tables[0]
+
+    #Compare only the six canonical columns.
+    reference = reference[CANONICAL_COLUMNS].copy()
+
+    #Compare Excel, JSON, and Parquet against CSV.
+    format_names = [
+        "Excel",
+        "JSON",
+        "Parquet"
+    ]
+
+    for format_name, other_table in zip(
+        format_names,
+        canonical_tables[1:]
+    ):
+
+        other = other_table[
+            CANONICAL_COLUMNS
+        ].copy()
+
+        try:
+            compare_frames(
+                reference,
+                other
+            )
+
+        except AssertionError as error:
+            raise AssertionError(
+                f"{format_name} does not match CSV: "
+                f"{error}"
+            ) from error
+
+        print(
+            f"CSV vs {format_name}: PASS"
+        )
+    
+    #Final canonical dataset
+    canonical_df = reference.sort_values(
+        by=["country", "year"]
+    ).reset_index(drop=True)
+
+    if len(canonical_df) != 1704:
+        raise ValueError(
+            f"Expected 1704 canonical records, "
+            f"found {len(canonical_df)}"
+        )
+
+    if canonical_df.duplicated(
+        subset=["country", "year"]
+    ).any():
+        raise ValueError(
+            "Canonical dataset has duplicate "
+        )
+
+    print("\nFour-format agreement: PASS")
+    print(
+        f"Final canonical records: {len(canonical_df)}"
+    )
