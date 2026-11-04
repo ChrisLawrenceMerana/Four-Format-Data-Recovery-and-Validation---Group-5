@@ -97,3 +97,29 @@ def population_matrix(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     result_df = result_df.reset_index()
 
     return result_df
+
+def calc_verification(canonical_df: pd.DataFrame) -> Dict[str, Any]:
+    """Checks if the complete calculations matches the desired outcome"""
+
+    #2007 Asia check
+    asia_check = canonical_df[(canonical_df["continent"] == "Asia") & (canonical_df["year"] == 2007)]
+    total_asia_pop = int(asia_check["pop"].sum())
+
+    #2007 Philippines check
+    ph_check = canonical_df[(canonical_df["country"] == "Philippines") & (canonical_df["year"] == 2007)]
+    total_ph_pop = int(ph_check["pop"].sum())
+    
+    desired_asia = 3811953827
+    desired_ph = 91077287
+
+    asia_match = total_asia_pop == desired_asia
+    ph_match = total_ph_pop == desired_ph
+
+    return {
+        "asia_population_matches_benchmark": asia_match,
+        "ph_population_matches_benchmark": ph_match,
+        "calculated_asia_pop": total_asia_pop,
+        "desired_asia_pop": desired_asia,
+        "calculated_ph_pop": total_ph_pop,
+        "desired_ph_pop": desired_ph
+    }
