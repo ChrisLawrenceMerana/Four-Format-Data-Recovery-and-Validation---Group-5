@@ -1,0 +1,53 @@
+# FOUR-FORMAT DATA RECOVERY AND VALIDATION
+# GROUP 5 — SUBMISSION MANIFEST
+
+PROJECT INFORMATION
+Project Title: Four-Format Data Recovery and Validation
+Group: Group 5
+Dataset: Gapminder Historical Teaching Snapshot
+
+--------------------------------------------------
+GIT REPOSITORY INFORMATION
+--------------------------------------------------
+
+Repository URL: https://github.com/ChrisLawrenceMerana/Four-Format-Data-Recovery-and-Validation---Group-5.git
+
+Release Tag: week10-v1.0
+
+Full Commit Hash: 17633c8caed87eee06832526069ac53a26561d3d
+
+--------------------------------------------------
+ORIGINAL INPUT FILES — SHA-256 CHECKSUMS
+--------------------------------------------------
+
+1. File: data/country_records.csv
+SHA-256: 11567e9c8c3fbeda6115cdf0797b6d234a246e60b0d2156548088ecd30542ca8
+
+2. File: data/country_records.xlsx
+SHA-256: 0756178ebfb07ae7adcedd07f1237bee7ef3bb95714102ca39657cde6784065e
+
+3. File: data/country_records.json
+SHA-256: 400966a74d2d19235e7d7f3091da71040d272e0d8ad0ca1213e45d0aa06306c3
+
+4. File: data/country_records.parquet
+SHA-256: 7f72d4ddb71d7cc34c50782220aca4b3bd68d9f0fe87fb0022b677a30b3c449a
+
+--------------------------------------------------
+DATASET VERIFICATION
+--------------------------------------------------
+
+Expected Raw Records per File: 1712
+Expected Quarantined Records per File: 6
+Expected Exact Duplicates per File: 2
+Expected Canonical Records: 1704
+
+Total Quarantined Records: 24
+Total Exact Duplicates Removed: 8
+
+--------------------------------------------------
+SUBMISSION INFORMATION
+--------------------------------------------------
+
+Submitted By: Group 5
+Submission Format: ZIP Archive
+Release Version: week10-v1.0
