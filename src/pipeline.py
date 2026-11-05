@@ -35,6 +35,8 @@ from src.exporter import (
     compare_frames,
 )
 
+from src.audit import add_audit, save_audit
+
 CANONICAL_COLUMNS = [
     "country",
     "continent",
@@ -207,6 +209,8 @@ def publish_staging(
 def run_pipeline(config: dict) -> None:
     """Load and verify the four input datasets."""
 
+    audit_log = []
+
     data_dir = Path(config["data_dir"])
     output_dir = Path(config["output_dir"])
 
@@ -269,6 +273,15 @@ def run_pipeline(config: dict) -> None:
             )
 
         print(f"Rows loaded: {len(raw_df)}")
+        add_audit(
+            audit_log,
+            step="reading",
+            source_file=file_path.name,
+            operation="read_and_map",
+            rule="SHA-256 verified; canonical columns mapped",
+            rows_before=len(raw_df),
+            rows_after=len(raw_df),
+        )
         print("Column mapping: PASS")
         print()
 
@@ -332,6 +345,25 @@ def run_pipeline(config: dict) -> None:
         print(f"Duplicates removed: {duplicate_count}")
         print(f"Clean records: {clean_count}")
         print("Validation: PASS")
+        add_audit(
+            audit_log,
+            step="validation",
+            source_file=file_path.name,
+            operation="quarantine_invalid",
+            rule="Manifest schema and domain rules",
+            rows_before=len(raw_df),
+            rows_after=len(raw_df) - rejected_count,
+        )
+
+        add_audit(
+            audit_log,
+            step="deduplication",
+            source_file=file_path.name,
+            operation="remove_exact_duplicates",
+            rule="Exact duplicate records removed",
+            rows_before=len(raw_df) - rejected_count,
+            rows_after=clean_count,
+        )
         print()
 
         # Save cleaned data and validation details.
@@ -434,6 +466,15 @@ def run_pipeline(config: dict) -> None:
         )
 
     print("\nFour-format agreement: PASS")
+    add_audit(
+        audit_log,
+        step="comparison",
+        source_file="all_four_formats",
+        operation="compare_canonical_records",
+        rule="Match by country and year; float tolerance 1e-8",
+        rows_before=len(canonical_df),
+        rows_after=len(canonical_df),
+    )
     print(
         f"Final canonical records: {len(canonical_df)}"
     )
@@ -496,6 +537,11 @@ def run_pipeline(config: dict) -> None:
         "2002",
         "2007"
     ]
+
+    if matrix_df["country"].tolist() != expected_countries:
+        raise ValueError(
+            "Population matrix countries do not match"
+        )
 
     if list(matrix_df.columns) != expected_columns:
         raise ValueError(
@@ -584,6 +630,25 @@ def run_pipeline(config: dict) -> None:
         )
 
         print("Analytical reports: STAGED")
+        add_audit(
+            audit_log,
+            step="analysis",
+            source_file="canonical",
+            operation="generate_analytical_reports",
+            rule=f"Reporting year {reporting_year}",
+            rows_before=len(canonical_df),
+            rows_after=len(canonical_df),
+        )
+
+        add_audit(
+            audit_log,
+            step="export",
+            source_file="canonical",
+            operation="export_and_reload",
+            rule="Four canonical formats must round-trip",
+            rows_before=len(canonical_df),
+            rows_after=len(canonical_df),
+        )
 
         #Export all four canonical formats, reloads and compares every export/
         export_paths = export_and_verify(
@@ -606,6 +671,12 @@ def run_pipeline(config: dict) -> None:
             )
 
         #Publish only after all checks succeed.
+        save_audit(
+            audit_log,
+            staging_dir / "audit_log.csv",
+        )
+
+        print("Audit log: STAGED")
         publish_staging(
             staging_dir,
             output_dir
