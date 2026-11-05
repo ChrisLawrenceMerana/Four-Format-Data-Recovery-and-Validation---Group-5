@@ -28,7 +28,7 @@ def read_csv_records(
         path,
         encoding=encoding,
         delimiter=delimiter,
-        skiprows=comment_lines,
+        comment="#",
         dtype=str,
         keep_default_na=False,
     )

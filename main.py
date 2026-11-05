@@ -1,34 +1,55 @@
+
+"""Command-line entry point for the recovery pipeline."""
+
 import argparse
 import json
+import sys
+from pathlib import Path
 
 from src.pipeline import run_pipeline
 
-def main() -> None:
-    """Run the recovery pipeline using a configuration file."""
 
+def main():
     parser = argparse.ArgumentParser(
-        description="Four-Format Data Recovery and Validation"
+        description="Four-format data recovery and validation"
     )
 
     parser.add_argument(
         "--config",
         required=True,
-        help="Path to the configuration JSON file"
+        help="Path to the JSON configuration file",
     )
 
     args = parser.parse_args()
 
     try:
-        with open(args.config, encoding="utf-8") as file:
+        config_path = Path(args.config)
+
+        with config_path.open(encoding="utf-8") as file:
             config = json.load(file)
+
+        # Resolve relative paths from the config file's folder.
+        for key in ("data_dir", "output_dir", "manifest"):
+            if key in config:
+                path = Path(config[key])
+
+                if not path.is_absolute():
+                    config[key] = str(
+                        config_path.resolve().parent / path
+                    )
 
         run_pipeline(config)
 
-        print("Pipeline completed successfully.")
-
     except Exception as error:
-        print(f"Pipeline failed: {error}")
-        raise SystemExit(1) from error
+        print(
+            f"Pipeline failed: {error}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print("Pipeline completed successfully.")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

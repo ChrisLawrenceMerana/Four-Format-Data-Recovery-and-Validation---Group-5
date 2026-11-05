@@ -224,6 +224,7 @@ data/
 
 # Generated pipeline outputs
 output/
+output_1997/
 
 # Python cache
 __pycache__/

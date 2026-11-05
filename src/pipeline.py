@@ -229,6 +229,15 @@ def _run_pipeline(
         "reporting_year",
         2007
     )
+    
+    if (
+        type(reporting_year) is not int
+        or reporting_year not in manifest["allowed_years"]
+    ):
+        raise ValueError(
+            f"Invalid reporting year: {reporting_year}. "
+            f"Allowed years: {manifest['allowed_years']}"
+        )
 
     print("Data directory:", data_dir)
     print("Output directory:", output_dir)
