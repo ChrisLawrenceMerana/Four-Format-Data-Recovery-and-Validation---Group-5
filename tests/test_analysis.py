@@ -53,7 +53,10 @@ class AnalysisTest(unittest.TestCase):
         self.assertIn("lifeExp_rank", result.columns)
 
         #Verifies ranking for a non-asian country
-        test_rank = result.loc[result["country"] == "Thailand," "lifeExp_rank"].values[0]
+        test_rank = result.loc[
+            result["country"] == "Thailand",
+            "lifeExp_rank"
+        ].values[0]
         self.assertEqual(test_rank, 1.0)
 
     def test_asia_pop_calc(self):
@@ -69,7 +72,7 @@ class AnalysisTest(unittest.TestCase):
 
         history_df = country_history(self.mock_df)
 
-        self.assertEqual(history_df.loc[0, "lifeExp_change", 0])
+        self.assertEqual(history_df.loc[0, "lifeExp_change"], 0)
         self.assertAlmostEqual(history_df.loc[1, "lifeExp_change"], 2)
 
     def test_matrix(self):

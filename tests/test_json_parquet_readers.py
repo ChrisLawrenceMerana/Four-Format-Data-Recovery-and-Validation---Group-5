@@ -3,8 +3,8 @@
 import unittest
 import pandas as pd
 import numpy as np
-from src.json_parquet_readers import read_country_json, read_country_parquet
-from src.normalizers import apply_column_mapping, normalize_and_validate, SCHEMA
+from src.json_parquet_reader import read_country_json, read_country_parquet
+from src.normalizer import apply_column_mapping, normalize_and_validate, SCHEMA
 
 
 class TestJsonParquet(unittest.TestCase):

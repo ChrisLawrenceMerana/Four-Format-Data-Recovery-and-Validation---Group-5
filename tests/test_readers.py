@@ -16,19 +16,23 @@ class TestReaders(unittest.TestCase):
         """Verifies CSV parsing, raw row count (1712), and canonical headers."""
         if not self.csv_path.exists():
             self.skipTest("Case data not present.")
-
+               
         mapping = {
-            "country_name": "country",
-            "region": "continent",
-            "record_year": "year",
-            "life_expectancy": "lifeExp",
-            "population_total": "pop",
-            "gdp_per_capita": "gdpPercap",
+            "CountryName": "country",
+            "ContinentName": "continent",
+            "ObservationYear": "year",
+            "LifeYears": "lifeExp",
+            "PopulationPersons": "pop",
+            "GDPPerPerson": "gdpPercap",
         }
+  
         df = read_csv_records(
             self.csv_path,
+            encoding="cp1252",
+            delimiter=";",
+            comment_lines=2,
             column_mapping=mapping,
-            drop_columns=["metadata_notes"],
+            drop_columns=["export_note"],
         )
         self.assertEqual(len(df), 1712)
         for col in CANONICAL_COLUMNS:
@@ -40,15 +44,18 @@ class TestReaders(unittest.TestCase):
             self.skipTest("Case data not present.")
 
         mapping = {
-            "Country": "country",
-            "Continent": "continent",
-            "Year": "year",
-            "Life_Expectancy": "lifeExp",
-            "Population": "pop",
-            "GDP_per_Capita": "gdpPercap",
+            "country_name": "country",
+            "continent_name": "continent",
+            "observation_year": "year",
+            "life_expectancy": "lifeExp",
+            "population": "pop",
+            "gdp_per_capita": "gdpPercap",
         }
+
         df = read_excel_records(
-            self.excel_path, sheet_name="observations", column_mapping=mapping
+            self.excel_path,
+            sheet_name="observations",
+            column_mapping=mapping,
         )
         self.assertEqual(len(df), 1712)
         for col in CANONICAL_COLUMNS:
