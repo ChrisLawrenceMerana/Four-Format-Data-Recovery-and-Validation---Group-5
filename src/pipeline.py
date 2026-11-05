@@ -37,6 +37,8 @@ from src.exporter import (
 
 from src.audit import add_audit, save_audit
 
+from src.validation_report import add_check, save_validation
+
 CANONICAL_COLUMNS = [
     "country",
     "continent",
@@ -206,7 +208,10 @@ def publish_staging(
     if previous_output_exists:
         shutil.rmtree(backup_dir)
 
-def run_pipeline(config: dict) -> None:
+def _run_pipeline(
+    config: dict,
+    validation_results: list[dict],
+) -> None:
     """Load and verify the four input datasets."""
 
     audit_log = []
@@ -344,6 +349,40 @@ def run_pipeline(config: dict) -> None:
         print(f"Quarantined: {rejected_count}")
         print(f"Duplicates removed: {duplicate_count}")
         print(f"Clean records: {clean_count}")
+        add_check(
+            validation_results,
+            f"{file_path.name}: raw rows",
+            settings["raw_records"],
+            len(raw_df),
+        )
+
+        add_check(
+            validation_results,
+            f"{file_path.name}: rejected rows",
+            expected["rejected_rows"],
+            rejected_count,
+        )
+
+        add_check(
+            validation_results,
+            f"{file_path.name}: duplicates",
+            expected["exact_duplicates_removed"],
+            duplicate_count,
+        )
+
+        add_check(
+            validation_results,
+            f"{file_path.name}: canonical rows",
+            expected["canonical_rows"],
+            clean_count,
+        )
+
+        add_check(
+            validation_results,
+            f"{file_path.name}: reconciliation",
+            True,
+            validation_run.reconciles(),
+        )
         print("Validation: PASS")
         add_audit(
             audit_log,
@@ -436,6 +475,12 @@ def run_pipeline(config: dict) -> None:
                 reference,
                 other
             )
+            add_check(
+                validation_results,
+                f"CSV vs {format_name} agreement",
+                True,
+                True,
+            )
 
         except AssertionError as error:
             raise AssertionError(
@@ -465,6 +510,52 @@ def run_pipeline(config: dict) -> None:
             "Canonical dataset has duplicate "
         )
 
+    add_check(
+        validation_results,
+        "Final canonical row count",
+        manifest["expected_per_file"]["canonical_rows"],
+        len(canonical_df),
+    )
+
+    add_check(
+        validation_results,
+        "Unique country-year keys",
+        0,
+        int(
+            canonical_df.duplicated(
+                subset=["country", "year"]
+            ).sum()
+        ),
+    )
+
+    add_check(
+        validation_results,
+        "Number of countries",
+        manifest["controls"]["countries"],
+        canonical_df["country"].nunique(),
+    )
+
+    add_check(
+        validation_results,
+        "Allowed continents",
+        0,
+        int(
+            (~canonical_df["continent"].isin(
+                manifest["allowed_continents"]
+            )).sum()
+        ),
+    )
+
+    add_check(
+        validation_results,
+        "Allowed years",
+        0,
+        int(
+            (~canonical_df["year"].isin(
+                manifest["allowed_years"]
+            )).sum()
+        ),
+    )
     print("\nFour-format agreement: PASS")
     add_audit(
         audit_log,
@@ -545,7 +636,7 @@ def run_pipeline(config: dict) -> None:
 
     if list(matrix_df.columns) != expected_columns:
         raise ValueError(
-            "Population matrix countries do not match"
+            "Population matrix columns do not match"
         )
 
     #Every country's 1982 baseline should equal 100.
@@ -588,7 +679,67 @@ def run_pipeline(config: dict) -> None:
         )
 
     print("Pandas and Numpy population agreement: PASS")
+    add_check(
+        validation_results,
+        "Philippines historical rows",
+        manifest["controls"]["philippines_rows"],
+        len(history_df),
+    )
 
+    add_check(
+        validation_results,
+        "Asia 2007 population",
+        manifest["controls"]["asia_2007_population"],
+        int(
+            canonical_df.loc[
+                (canonical_df["continent"] == "Asia")
+                & (canonical_df["year"] == 2007),
+                "pop"
+            ].sum()
+        ),
+    )
+
+    add_check(
+        validation_results,
+        "Philippines 2007 population",
+        manifest["controls"]["philippines_2007_population"],
+        int(
+            canonical_df.loc[
+                (canonical_df["country"] == "Philippines")
+                & (canonical_df["year"] == 2007),
+                "pop"
+            ].sum()
+        ),
+    )
+
+    add_check(
+        validation_results,
+        "Population matrix baseline",
+        True,
+        bool(
+            np.allclose(
+                matrix_df["1982"].to_numpy(dtype=float),
+                100.0,
+                rtol=0,
+                atol=1e-8,
+            )
+        ),
+    )
+
+    add_check(
+        validation_results,
+        "Pandas NumPy Asia total agreement",
+        asia_population,
+        numpy_asia_population,
+    )
+
+    if reporting_year == 2007:
+        add_check(
+            validation_results,
+            "Asia 2007 rows",
+            manifest["controls"]["asia_2007_rows"],
+            len(asia_df),
+        )
     print("\nAnalytical processing: PASS")
 
     print("\nStarting safe output staging...")
@@ -670,6 +821,35 @@ def run_pipeline(config: dict) -> None:
                 f"Canonical {format_name.upper()}: VERIFIED"
             )
 
+        for format_name in (
+            "csv",
+            "xlsx",
+            "json",
+            "parquet",
+        ):
+            add_check(
+                validation_results,
+                f"{format_name.upper()} export roundtrip",
+                True,
+                format_name in export_paths,
+            )
+
+        # Save the validation report in staging.
+        if not all(
+            result["pass"]
+            for result in validation_results
+        ):
+            raise ValueError(
+                "One or more validation checks failed"
+            )
+
+        save_validation(
+            validation_results,
+            staging_dir / "validation.csv",
+        )
+
+        print("Validation report: STAGED")
+
         #Publish only after all checks succeed.
         save_audit(
             audit_log,
@@ -696,3 +876,41 @@ def run_pipeline(config: dict) -> None:
         raise
 
     print("\nSafe Staging and Publication: PASS")
+
+
+def run_pipeline(config: dict) -> None:
+    """Run the pipeline and report failures safely."""
+
+    validation_results = []
+
+    try:
+        _run_pipeline(
+            config,
+            validation_results,
+        )
+
+    except Exception as error:
+        # Keep failure diagnostics outside output/,
+        # so previous successful outputs remain intact.
+        output_dir = Path(config["output_dir"])
+        failure_path = (
+            output_dir.parent / "failed_validation.csv"
+        )
+
+        add_check(
+            validation_results,
+            "Pipeline execution",
+            "success",
+            f"{type(error).__name__}: {error}",
+        )
+
+        save_validation(
+            validation_results,
+            failure_path,
+        )
+
+        print(
+            f"Failure report saved: {failure_path}"
+        )
+
+        raise
