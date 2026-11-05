@@ -1,6 +1,7 @@
-member,role,contributions,files_contributed
-Aljur S. Cabalfin,Data Ingestion,"CSV and Excel readers; source column mapping; reader tests","src/readers.py; tests/test_readers.py",
-Macie L. Moises,Data Validation,"Schema validation; invalid record quarantine; duplicate detection; validation tests","src/validation.py; tests/test_validation.py",
-Sheryl Jane E. Galleto,JSON and Parquet Processing,"JSON and Parquet readers; format normalization; reader tests","src/json_parquet_reader.py; tests/test_json_parquet_readers.py",
-Clarence John D. Ello,Data Analysis,"Asia population analysis; Philippines historical analysis; NumPy population matrix; analysis tests","src/analysis.py; tests/test_analysis.py",
-Chris Lawrence O. Meraña,Export and Integration,"Four-format exports; round-trip verification; pipeline integration; CLI and failure tests","src/exporter.py; src/pipeline.py; main.py; tests/test_pipeline_failures.py; tests/test_cli_integration.py",
+
+member,role,contributions,files_contributed,branch,commit_hash
+Aljur Cabalfin,CSV and Excel Readers,"Implemented CSV and Excel format readers with automated checks","src/readers.py; tests/test_readers.py",feat-csv-excel-readers,cd23070
+Macie Moises,JSON and Parquet Processing,"Implemented JSON and Parquet readers; column mapping; normalization; and automated tests","src/json_parquet_reader.py; src/normalizers.py; tests/test_json_parquet_readers.py",feat-json-parquet-normalization,"e0e589a; d2370bb; 879f9f1; 36c46c3"
+Sheryl Jane Galleto,Data Validation,"Implemented validation rules; cell-level checks; quarantine routing; duplicate detection; conflicting key checks; and automated tests","src/validation.py; tests/test_validation.py",feat-row-validation,"0879eb1; a1b4de8; c9ef134"
+Clarence John Ello,Data Analysis and NumPy,"Implemented Asia population analysis; Philippines historical analysis; NumPy population index matrix; calculation verification; and automated tests","src/analysis.py; tests/test_analysis.py",feat-analysis-matrix-calculation,"2e9d882; d40dbd5; ae39b07; 2f892c1"
+Chris Lawrence Meraña,Export and Pipeline Integration,"Implemented four-format canonical export and reload verification; CLI; SHA-256 verification; pipeline integration; safe staging; audit logging; validation reports; failure handling; integration tests; and final notebook documentation","src/exporter.py; src/pipeline.py; main.py; tests/test_pipeline_failures.py; tests/test_cli_integration.py; report.ipynb; report.html; requirements.txt",feat-integration,"3f830bd; f1006d1; 7ca4e1f; 6ff29c7"
