@@ -36,8 +36,8 @@ from src.exporter import (
 )
 
 from src.audit import add_audit, save_audit
-
 from src.validation_report import add_check, save_validation
+from src.rejection_report import save_record_report
 
 CANONICAL_COLUMNS = [
     "country",
@@ -438,9 +438,23 @@ def _run_pipeline(
             "Expected 8 exact duplicates overall"
         )
 
+    add_check(
+        validation_results,
+        "Total quarantined records",
+        24,
+        len(all_quarantined),
+    )
+
+    add_check(
+        validation_results,
+        "Total exact duplicates removed",
+        8,
+        len(all_duplicates),
+    )
+
     print("All validation counts: PASS")
 
-    print ("\nStarting for-format comparison...")
+    print ("\nStarting four-format comparison...")
 
     if len(canonical_tables) != 4:
         raise ValueError(
@@ -763,6 +777,24 @@ def _run_pipeline(
 
     try:
         print("Writing files to staging directory...")
+        # Save quarantined and duplicate records.
+        save_record_report(
+            all_quarantined,
+            staging_dir / "quarantine.csv",
+        )
+
+        save_record_report(
+            all_duplicates,
+            staging_dir / "duplicate_log.csv",
+        )
+
+        print(
+            f"Quarantined records saved: {len(all_quarantined)}"
+        )
+
+        print(
+            f"Duplicate records saved: {len(all_duplicates)}"
+        )
 
         #Save the three analytical reports.
         asia_df.to_csv(
